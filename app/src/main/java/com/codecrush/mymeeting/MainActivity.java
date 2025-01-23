@@ -1,5 +1,7 @@
 package com.codecrush.mymeeting;
 
+import static android.content.ContentValues.TAG;
+
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -24,7 +26,8 @@ public class MainActivity extends AppCompatActivity {
     private String channelName = "test";
     // Fill in the temporary token generated from Agora Console
     private String token = "";
-    private RtcEngine mRtcEngine;
+    private RtcEngine mRtcEngine1;
+    private RtcEngine mRtcEngine2;
     private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
         // Callback when successfully joining the channel
         @Override
@@ -51,6 +54,14 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, "User offline: " + uid, Toast.LENGTH_SHORT).show();
             });
         }
+
+        @Override
+        public void onError(int err) {
+            runOnUiThread(() -> {
+                Toast.makeText(MainActivity.this, "Error: " + err, Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Error: " + err);
+            });
+        }
     };
     private void initializeAndJoinChannel() {
         try {
@@ -60,21 +71,21 @@ public class MainActivity extends AppCompatActivity {
             config.mAppId = myAppId;
             config.mEventHandler = mRtcEventHandler;
             // Create and initialize an RtcEngine instance
-            mRtcEngine = RtcEngine.create(config);
+            mRtcEngine1 = RtcEngine.create(config);
         } catch (Exception e) {
             throw new RuntimeException("Check the error.");
         }
         // Enable the video module
-        mRtcEngine.enableVideo();
+        mRtcEngine1.enableVideo();
 
         // Enable local preview
-        mRtcEngine.startPreview();
+        mRtcEngine1.startPreview();
         // Create a SurfaceView object and make it a child object of FrameLayout
         FrameLayout container = findViewById(R.id.local_video_view_container);
         SurfaceView surfaceView = new SurfaceView (getBaseContext());
         container.addView(surfaceView);
         // Pass the SurfaceView object to the SDK and set the local view
-        mRtcEngine.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 0));
+        mRtcEngine1.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 0));
         // Create an instance of ChannelMediaOptions and configure it
         ChannelMediaOptions options = new ChannelMediaOptions();
         // Set the user role to BROADCASTER or AUDIENCE according to the use-case
@@ -85,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
         options.audienceLatencyLevel = Constants.AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
         // Use the temporary token to join the channel
         // Specify the user ID yourself and ensure it is unique within the channel
-        mRtcEngine.joinChannel(token, channelName, 0, options);
+        mRtcEngine1.joinChannel(token, channelName, 0, options);
     }
 
     private void initializeAndJoinChannel2() {
@@ -96,21 +107,21 @@ public class MainActivity extends AppCompatActivity {
             config.mAppId = myAppId;
             config.mEventHandler = mRtcEventHandler;
             // Create and initialize an RtcEngine instance
-            mRtcEngine = RtcEngine.create(config);
+            mRtcEngine2 = RtcEngine.create(config);
         } catch (Exception e) {
             throw new RuntimeException("Check the error.");
         }
         // Enable the video module
-        mRtcEngine.enableVideo();
+        mRtcEngine2.enableVideo();
 
         // Enable local preview
-        mRtcEngine.startPreview();
+        mRtcEngine2.startPreview();
         // Create a SurfaceView object and make it a child object of FrameLayout
         FrameLayout container = findViewById(R.id.remote_video_view_container);
         SurfaceView surfaceView = new SurfaceView (getBaseContext());
         container.addView(surfaceView);
         // Pass the SurfaceView object to the SDK and set the local view
-        mRtcEngine.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 1));
+        mRtcEngine2.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 1));
         // Create an instance of ChannelMediaOptions and configure it
         ChannelMediaOptions options = new ChannelMediaOptions();
         // Set the user role to BROADCASTER or AUDIENCE according to the use-case
@@ -121,8 +132,9 @@ public class MainActivity extends AppCompatActivity {
         options.audienceLatencyLevel = Constants.AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
         // Use the temporary token to join the channel
         // Specify the user ID yourself and ensure it is unique within the channel
-        mRtcEngine.joinChannel(token, channelName, 1, options);
+        mRtcEngine2.joinChannel(token, channelName, 1, options);
     }
+
     /*private void setupRemoteVideo(int uid) {
         FrameLayout container = findViewById(R.id.remote_video_view_container);
         SurfaceView surfaceView = new SurfaceView (getBaseContext());
@@ -182,9 +194,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Stop local video preview
-        mRtcEngine.stopPreview();
-        // Leave the channel
-        mRtcEngine.leaveChannel();
+        if (mRtcEngine1 != null) {
+            mRtcEngine1.leaveChannel();
+            mRtcEngine1.destroy();
+        }
+        if (mRtcEngine2 != null) {
+            mRtcEngine2.leaveChannel();
+            mRtcEngine2.destroy();
+        }
     }
 }
