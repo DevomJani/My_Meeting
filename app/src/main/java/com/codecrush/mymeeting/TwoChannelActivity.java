@@ -3,40 +3,37 @@ package com.codecrush.mymeeting;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.SurfaceView;
 import android.widget.FrameLayout;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
 import io.agora.rtc2.ChannelMediaOptions;
 import io.agora.rtc2.Constants;
 import io.agora.rtc2.IRtcEngineEventHandler;
 import io.agora.rtc2.RtcEngine;
 import io.agora.rtc2.RtcEngineConfig;
+import io.agora.rtc2.RtcEngineEx;
 import io.agora.rtc2.video.VideoCanvas;
-
-public class AudienceActivity extends AppCompatActivity {
+public class TwoChannelActivity extends AppCompatActivity {
     // Fill in the app ID from Agora Console
     private String myAppId = "8f0a7c3a1dc94719848272d461c4d78d";
     // Fill in the channel name
     private String channelName = "test";
     // Fill in the temporary token generated from Agora Console
-    private String token = "007eJxTYDitHzSlvP3gJvGzIj4P/VSurvSwnHk6+m3w6a0CJ74+VPuqwGCRZpBonmycaJiSbGlibmhpYWJhZG6UYmJmmGySYm6Rsl50UnpDICNDbHE1MyMDBIL4LAwlqcUlDAwAowogVg==";
-
+    private String token = "";
     private RtcEngine mRtcEngine;
-    private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
 
+    private RtcEngineEx engineEx;
+    private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
         // Callback when successfully joining the channel
         @Override
         public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
             super.onJoinChannelSuccess(channel, uid, elapsed);
             runOnUiThread(() -> {
-                Toast.makeText(AudienceActivity.this, "Join channel success", Toast.LENGTH_SHORT).show();
+                Toast.makeText(TwoChannelActivity.this, "Join channel success", Toast.LENGTH_SHORT).show();
             });
         }
         // Callback when a remote user or host joins the current channel
@@ -44,9 +41,7 @@ public class AudienceActivity extends AppCompatActivity {
         public void onUserJoined(int uid, int elapsed) {
             runOnUiThread(() -> {
                 // When a remote user joins the channel, display the remote video stream for the specified uid
-                setupRemoteVideo(uid);
-                Toast.makeText(AudienceActivity.this, "User online: " + uid, Toast.LENGTH_SHORT).show();
-
+                //setupRemoteVideo(uid);
             });
         }
         // Callback when a remote user or host leaves the current channel
@@ -54,7 +49,33 @@ public class AudienceActivity extends AppCompatActivity {
         public void onUserOffline(int uid, int reason) {
             super.onUserOffline(uid, reason);
             runOnUiThread(() -> {
-                Toast.makeText(AudienceActivity.this, "User offline: " + uid, Toast.LENGTH_SHORT).show();
+                Toast.makeText(TwoChannelActivity.this, "User offline: " + uid, Toast.LENGTH_SHORT).show();
+            });
+        }
+    };
+    private final IRtcEngineEventHandler mRtcEventHandler2 = new IRtcEngineEventHandler() {
+        // Callback when successfully joining the channel
+        @Override
+        public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
+            super.onJoinChannelSuccess(channel, uid, elapsed);
+            runOnUiThread(() -> {
+                Toast.makeText(TwoChannelActivity.this, "Join channel success", Toast.LENGTH_SHORT).show();
+            });
+        }
+        // Callback when a remote user or host joins the current channel
+        @Override
+        public void onUserJoined(int uid, int elapsed) {
+            runOnUiThread(() -> {
+                // When a remote user joins the channel, display the remote video stream for the specified uid
+               // setupRemoteVideo(uid);
+            });
+        }
+        // Callback when a remote user or host leaves the current channel
+        @Override
+        public void onUserOffline(int uid, int reason) {
+            super.onUserOffline(uid, reason);
+            runOnUiThread(() -> {
+                Toast.makeText(TwoChannelActivity.this, "User offline: " + uid, Toast.LENGTH_SHORT).show();
             });
         }
     };
@@ -81,6 +102,7 @@ public class AudienceActivity extends AppCompatActivity {
         container.addView(surfaceView);
         // Pass the SurfaceView object to the SDK and set the local view
         mRtcEngine.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 0));
+        mRtcEngine.switchCamera();
         // Create an instance of ChannelMediaOptions and configure it
         ChannelMediaOptions options = new ChannelMediaOptions();
         // Set the user role to BROADCASTER or AUDIENCE according to the use-case
@@ -92,6 +114,42 @@ public class AudienceActivity extends AppCompatActivity {
         // Use the temporary token to join the channel
         // Specify the user ID yourself and ensure it is unique within the channel
         mRtcEngine.joinChannel(token, channelName, 0, options);
+    }
+
+    private void initializeAndJoinChannel2() {
+        try {
+            // Create an RtcEngineConfig instance and configure it
+            RtcEngineConfig config = new RtcEngineConfig();
+            config.mContext = getBaseContext();
+            config.mAppId = myAppId;
+            config.mEventHandler = mRtcEventHandler2;
+            // Create and initialize an RtcEngine instance
+            engineEx = (RtcEngineEx) RtcEngine.create(config);
+        } catch (Exception e) {
+            throw new RuntimeException("Check the error.");
+        }
+        // Enable the video module
+        engineEx.enableVideo();
+
+        // Enable local preview
+        engineEx.startPreview();
+        // Create a SurfaceView object and make it a child object of FrameLayout
+        FrameLayout container = findViewById(R.id.remote_video_view_container);
+        SurfaceView surfaceView = new SurfaceView (getBaseContext());
+        container.addView(surfaceView);
+        // Pass the SurfaceView object to the SDK and set the local view
+        engineEx.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, 1));
+        // Create an instance of ChannelMediaOptions and configure it
+        ChannelMediaOptions options = new ChannelMediaOptions();
+        // Set the user role to BROADCASTER or AUDIENCE according to the use-case
+        options.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
+        // In the live broadcast use-case, set the channel profile to BROADCASTING (live broadcast use-case)
+        options.channelProfile = Constants.CHANNEL_PROFILE_LIVE_BROADCASTING;
+        // Set the audience latency level
+        options.audienceLatencyLevel = Constants.AUDIENCE_LATENCY_LEVEL_ULTRA_LOW_LATENCY;
+        // Use the temporary token to join the channel
+        // Specify the user ID yourself and ensure it is unique within the channel
+        engineEx.joinChannel(token, channelName, 1, options);
     }
     private void setupRemoteVideo(int uid) {
         FrameLayout container = findViewById(R.id.remote_video_view_container);
@@ -134,15 +192,17 @@ public class AudienceActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (checkPermissions()) {
             initializeAndJoinChannel();
+            initializeAndJoinChannel2();
         }
     }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_audience);
+        setContentView(R.layout.activity_two_channel);
         // If authorized, initialize RtcEngine and join the channel
         if (checkPermissions()) {
             initializeAndJoinChannel();
+            initializeAndJoinChannel2();
         } else {
             ActivityCompat.requestPermissions(this, getRequiredPermissions(), PERMISSION_REQ_ID);
         }
@@ -154,6 +214,9 @@ public class AudienceActivity extends AppCompatActivity {
         mRtcEngine.stopPreview();
         // Leave the channel
         mRtcEngine.leaveChannel();
-    }
 
+        engineEx.stopPreview();
+
+        engineEx.leaveChannel();
+    }
 }

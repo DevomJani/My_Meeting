@@ -22,7 +22,9 @@ import io.agora.rtc2.RtcConnection;
 import io.agora.rtc2.RtcEngine;
 import io.agora.rtc2.RtcEngineConfig;
 import io.agora.rtc2.RtcEngineEx;
+import io.agora.rtc2.video.CameraCapturerConfiguration;
 import io.agora.rtc2.video.VideoCanvas;
+import io.agora.rtc2.video.VideoEncoderConfiguration;
 
 public class MainActivity extends AppCompatActivity {
     private static final String APP_ID = "8f0a7c3a1dc94719848272d461c4d78d";
@@ -32,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TOKEN_2 = "007eJxTYPgtP6n1qlfQZLcLrcdnCh6eqiTe3eP7rDzL9a6u8JTg+ssKDBZpBonmycaJhinJlibmhpYWJhZG5kYpJmaGySYp5hYpj29PTG8IZGTgWzGLhZEBAkF8TobkjMS8vNQcXSMGBgD/wSE7";
 
     private RtcEngineEx engine;
+    private RtcEngineEx engine2;
     private RtcConnection rtcConnection1 = new RtcConnection();
     private RtcConnection rtcConnection2 = new RtcConnection();
 
@@ -65,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onUserJoined(int uid, int elapsed) {
-            runOnUiThread(() -> setupRemoteVideo(remoteContainer1, uid, rtcConnection1));
+            //runOnUiThread(() -> setupRemoteVideo(remoteContainer1, uid, rtcConnection1));
         }
     };
 
@@ -77,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onUserJoined(int uid, int elapsed) {
-            runOnUiThread(() -> setupRemoteVideo(remoteContainer2, uid, rtcConnection2));
+            //runOnUiThread(() -> setupRemoteVideo(remoteContainer2, uid, rtcConnection2));
         }
     };
 
@@ -103,8 +106,9 @@ public class MainActivity extends AppCompatActivity {
             config.mContext = getApplicationContext();
             config.mAppId = APP_ID;
             engine = (RtcEngineEx) RtcEngine.create(config);
+            engine2 = (RtcEngineEx) RtcEngine.create(config);
 
-            // Join first channel
+            // Configure the first channel with the front camera
             rtcConnection1.channelId = CHANNEL_1;
             rtcConnection1.localUid = new Random().nextInt(512) + 1;
             ChannelMediaOptions options1 = new ChannelMediaOptions();
@@ -112,9 +116,12 @@ public class MainActivity extends AppCompatActivity {
             options1.autoSubscribeVideo = true;
             options1.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
 
+            engine.setCameraCapturerConfiguration(new CameraCapturerConfiguration(
+                    CameraCapturerConfiguration.CAMERA_DIRECTION.CAMERA_FRONT
+            ));
             engine.joinChannelEx(TOKEN_1, rtcConnection1, options1, eventHandler1);
 
-            // Join second channel
+            // Configure the second channel with the back camera
             rtcConnection2.channelId = CHANNEL_2;
             rtcConnection2.localUid = new Random().nextInt(512) + 512;
             ChannelMediaOptions options2 = new ChannelMediaOptions();
@@ -122,7 +129,10 @@ public class MainActivity extends AppCompatActivity {
             options2.autoSubscribeVideo = true;
             options2.clientRoleType = Constants.CLIENT_ROLE_BROADCASTER;
 
-            engine.joinChannelEx(TOKEN_2, rtcConnection2, options2, eventHandler2);
+            engine2.setCameraCapturerConfiguration(new CameraCapturerConfiguration(
+                    CameraCapturerConfiguration.CAMERA_DIRECTION.CAMERA_REAR
+            ));
+            engine2.joinChannelEx(TOKEN_2, rtcConnection2, options2, eventHandler2);
 
             setupLocalVideo();
         } catch (Exception e) {
@@ -132,9 +142,20 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupLocalVideo() {
         SurfaceView surfaceView = new SurfaceView(this);
-        localContainer.addView(surfaceView);
+        remoteContainer1.addView(surfaceView);
+        remoteContainer1.removeAllViews();
         engine.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, rtcConnection1.localUid));
+
+        remoteContainer2.addView(surfaceView);
+        remoteContainer2.removeAllViews();
+        engine2.setupLocalVideo(new VideoCanvas(surfaceView, VideoCanvas.RENDER_MODE_FIT, rtcConnection2.localUid));
+
         engine.startPreview();
+        engine2.startPreview();
+        engine.enableVideo();
+        engine2.enableVideo();
+
+
     }
 
     private void setupRemoteVideo(FrameLayout container, int uid, RtcConnection connection) {
