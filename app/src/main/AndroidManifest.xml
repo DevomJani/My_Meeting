@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
 
+    <uses-feature android:name="android.hardware.camera.front" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -23,6 +25,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyMeeting"
         tools:targetApi="31">
+        <activity
+            android:name=".DualCameraActivity"
+            android:exported="false" />
         <activity
             android:name=".TwoChannelActivity"
             android:exported="false" />
@@ -40,7 +45,7 @@
             android:exported="false" />
         <activity
             android:name=".MainActivity"
-            android:exported="false"></activity>
+            android:exported="false" />
     </application>
 
 </manifest>
